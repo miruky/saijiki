@@ -1,0 +1,602 @@
+/* 和紙のような生成りのベースに、季節ごとの淡い色を差す。
+   本文と季語は明朝で組む。ライト・ダークはOS設定に追従。 */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f5f3ef;
+  --paper: #fdfcf9;
+  --ink: #2a2723;
+  --muted: #6e675c;
+  --line: #e3ddd1;
+  --accent: #7a5c3e;
+  --accent-soft: #f0e7db;
+  --danger: #a93226;
+  --spring: #b0567a;
+  --spring-soft: #f6e3ea;
+  --summer: #2f6b56;
+  --summer-soft: #e0efe8;
+  --autumn: #a8612a;
+  --autumn-soft: #f6e8da;
+  --winter: #44618c;
+  --winter-soft: #e3eaf4;
+  --newyear: #9b2d2d;
+  --newyear-soft: #f6e0e0;
+  --shadow: 0 8px 24px rgb(42 39 35 / 0.07);
+  --radius: 14px;
+  --serif: 'Hiragino Mincho ProN', 'Yu Mincho', 'Noto Serif JP', serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #191815;
+    --paper: #221f1b;
+    --ink: #e9e4da;
+    --muted: #a39a8a;
+    --line: #37332b;
+    --accent: #c4a376;
+    --accent-soft: #36301f;
+    --danger: #e0735f;
+    --spring: #d98aa8;
+    --spring-soft: #3c2731;
+    --summer: #7cc2a3;
+    --summer-soft: #1f3a2f;
+    --autumn: #d9985f;
+    --autumn-soft: #3c2e1e;
+    --winter: #8fb0d8;
+    --winter-soft: #233246;
+    --newyear: #d97f7f;
+    --newyear-soft: #3c2424;
+    --shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin: 0 0 12px;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* ---- 骨格 ---- */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header-inner {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.brand svg {
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+}
+
+.site-header nav {
+  display: flex;
+  gap: 4px;
+}
+
+.site-header nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.site-header nav a svg {
+  width: 16px;
+  height: 16px;
+}
+
+.site-header nav a:hover {
+  color: var(--ink);
+  background: var(--accent-soft);
+}
+
+.site-header nav a[aria-current='page'] {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.site-header nav small {
+  font-size: 0.75rem;
+  margin-left: 2px;
+}
+
+.site-main {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.site-footer {
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.site-footer p {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 16px 24px;
+}
+
+/* ---- 入場モーション ---- */
+
+.view {
+  animation: view-in 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.kigo-list li,
+.poems li {
+  animation: rise 0.35s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation-delay: calc(var(--i, 0) * 25ms);
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---- 部品 ---- */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.button:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+.button:active {
+  transform: none;
+}
+
+.button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.button.primary:hover {
+  filter: brightness(1.06);
+}
+
+.button.small {
+  padding: 5px 12px;
+  font-size: 0.85rem;
+}
+
+.button.small svg {
+  width: 15px;
+  height: 15px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.icon-button:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.icon-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+input,
+select,
+textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  transition: border-color 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+}
+
+.panel {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+/* ---- 歳時記 ---- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.season-tabs {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+  background: var(--paper);
+}
+
+.season-tab {
+  border: 0;
+  background: none;
+  padding: 5px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.season-tab:hover {
+  color: var(--ink);
+}
+
+.season-tab.active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.search {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--muted);
+}
+
+.search:focus-within {
+  border-color: var(--accent);
+}
+
+.search svg {
+  width: 16px;
+  height: 16px;
+}
+
+.search input {
+  flex: 1;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.search input:focus {
+  box-shadow: none;
+}
+
+.kigo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+.kigo-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition:
+    border-color 0.15s ease,
+    transform 0.2s cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 0.2s ease;
+}
+
+.kigo-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+
+.kigo-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.kigo-head h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.35rem;
+}
+
+.kigo-reading {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.kigo-tags {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.tag.season-spring {
+  background: var(--spring-soft);
+  color: var(--spring);
+}
+
+.tag.season-summer {
+  background: var(--summer-soft);
+  color: var(--summer);
+}
+
+.tag.season-autumn {
+  background: var(--autumn-soft);
+  color: var(--autumn);
+}
+
+.tag.season-winter {
+  background: var(--winter-soft);
+  color: var(--winter);
+}
+
+.tag.season-newyear {
+  background: var(--newyear-soft);
+  color: var(--newyear);
+}
+
+.kigo-variants {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.kigo-note {
+  margin: 0;
+  font-size: 0.92rem;
+  flex: 1;
+}
+
+.kigo-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.used-count {
+  font-size: 0.82rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---- 詠草帳 ---- */
+
+.compose textarea {
+  width: 100%;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  line-height: 1.9;
+  resize: vertical;
+  margin-bottom: 12px;
+}
+
+.compose-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.compose-row .grow {
+  flex: 1;
+  min-width: 160px;
+}
+
+.poems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.poem {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 12px;
+}
+
+.poem-text {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  line-height: 2;
+}
+
+.poem-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.poem-date {
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-left: auto;
+}
+
+.poem-memo {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 640px) {
+  .site-main {
+    padding: 24px 16px 48px;
+  }
+
+  .panel {
+    padding: 16px;
+  }
+}
