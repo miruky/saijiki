@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 470" role="img" aria-labelledby="arch-title">
+  <title id="arch-title">saijikiの構成図。UI層が季語データと検索、詠草の台帳を使い、詠草はlocalStorageに保存される。</title>
+  <style>
+    .box { fill: #fdfcf9; stroke: #e3ddd1; stroke-width: 1.5; }
+    .layer { fill: #f5f3ef; stroke: #e3ddd1; stroke-width: 1.5; }
+    .chip { fill: #f0e7db; stroke: none; }
+    .name { fill: #2a2723; font: 600 15px system-ui, sans-serif; }
+    .label { fill: #6e675c; font: 13px system-ui, sans-serif; }
+    .chip-text { fill: #7a5c3e; font: 600 13px system-ui, sans-serif; }
+    .layer-name { fill: #7a5c3e; font: 700 13px system-ui, sans-serif; letter-spacing: 0.08em; }
+    .edge { stroke: #6e675c; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+    .edge-label { fill: #6e675c; font: 12px system-ui, sans-serif; }
+    #arrow path { fill: #6e675c; }
+    @media (prefers-color-scheme: dark) {
+      .box { fill: #221f1b; stroke: #37332b; }
+      .layer { fill: #191815; stroke: #37332b; }
+      .chip { fill: #36301f; }
+      .name { fill: #e9e4da; }
+      .label { fill: #a39a8a; }
+      .chip-text { fill: #c4a376; }
+      .layer-name { fill: #c4a376; }
+      .edge { stroke: #a39a8a; }
+      .edge-label { fill: #a39a8a; }
+      #arrow path { fill: #a39a8a; }
+    }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+  </defs>
+
+  <rect class="layer" x="40" y="32" width="800" height="128" rx="14"/>
+  <text class="layer-name" x="64" y="60">UI層(app.ts / main.ts)</text>
+  <text class="label" x="64" y="82">歳時記と詠草帳の2画面をハッシュで切り替え、「この季語で詠む」で橋渡しする</text>
+  <rect class="chip" x="64" y="100" width="150" height="32" rx="16"/>
+  <text class="chip-text" x="139" y="121" text-anchor="middle">歳時記 #/</text>
+  <rect class="chip" x="226" y="100" width="150" height="32" rx="16"/>
+  <text class="chip-text" x="301" y="121" text-anchor="middle">詠草帳 #/eisou</text>
+
+  <path class="edge" d="M150 160 V224"/>
+  <path class="edge" d="M440 160 V224"/>
+  <path class="edge" d="M730 160 V224"/>
+
+  <rect class="box" x="60" y="228" width="180" height="96" rx="14"/>
+  <text class="name" x="150" y="262" text-anchor="middle">data/kigo.ts</text>
+  <text class="label" x="150" y="286" text-anchor="middle">五季×七分類の</text>
+  <text class="label" x="150" y="306" text-anchor="middle">季語データ</text>
+
+  <rect class="box" x="350" y="228" width="180" height="96" rx="14"/>
+  <text class="name" x="440" y="262" text-anchor="middle">lib/kigo.ts</text>
+  <text class="label" x="440" y="286" text-anchor="middle">季節・分類・文字での</text>
+  <text class="label" x="440" y="306" text-anchor="middle">検索と傍題ひき</text>
+
+  <rect class="box" x="640" y="228" width="180" height="96" rx="14"/>
+  <text class="name" x="730" y="262" text-anchor="middle">lib/poems.ts</text>
+  <text class="label" x="730" y="286" text-anchor="middle">詠草の型・検証・</text>
+  <text class="label" x="730" y="306" text-anchor="middle">並べ替え・永続化</text>
+
+  <path class="edge" d="M350 276 H248"/>
+  <text class="edge-label" x="262" y="268">参照</text>
+
+  <path class="edge" d="M730 324 V388"/>
+  <text class="edge-label" x="742" y="362">保存・復元</text>
+
+  <rect class="box" x="640" y="392" width="180" height="48" rx="14"/>
+  <text class="name" x="730" y="421" text-anchor="middle">localStorage</text>
+</svg>
