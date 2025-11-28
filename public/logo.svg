@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">saijiki - 短冊に梅の花を描いたロゴ</title>
+  <style>
+    .bg { fill: #f5f3ef; }
+    .ink { stroke: #2a2723; }
+    .accent { stroke: #b0567a; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #191815; }
+      .ink { stroke: #e9e4da; }
+      .accent { stroke: #d98aa8; }
+    }
+  </style>
+  <rect class="bg" width="128" height="128" rx="28"/>
+  <g fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path class="ink" d="M44 16h40l-8 10 8 10v76H44z"/>
+    <circle class="accent" cx="64" cy="74" r="11"/>
+    <path class="accent" d="M64 56v7M64 85v7M46 74h7M75 74h7"/>
+  </g>
+</svg>
