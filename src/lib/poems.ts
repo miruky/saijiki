@@ -57,6 +57,21 @@ export function serializePoems(poems: Poem[]): string {
   return JSON.stringify(poems);
 }
 
+/**
+ * 取り込んだ詠草を既存に統合する。同じidは既存を優先して重複させず、
+ * 未知のidだけを足す。戻り値は新しい日付が先頭。
+ */
+export function mergePoems(existing: Poem[], incoming: Poem[]): Poem[] {
+  const seen = new Set(existing.map((p) => p.id));
+  const merged = [...existing];
+  for (const p of incoming) {
+    if (seen.has(p.id)) continue;
+    seen.add(p.id);
+    merged.push(p);
+  }
+  return sortByDateDesc(merged);
+}
+
 /** 新しい日付が先頭。同日は入力順を保つ */
 export function sortByDateDesc(poems: Poem[]): Poem[] {
   return poems
