@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createStore, deserializePoems, serializePoems, sortByDateDesc, type Poem } from './poems';
+import {
+  createStore,
+  deserializePoems,
+  mergePoems,
+  serializePoems,
+  sortByDateDesc,
+  type Poem,
+} from './poems';
 import { seedPoems } from './seed';
 
 function poem(over: Partial<Poem>): Poem {
@@ -44,6 +51,28 @@ describe('sortByDateDesc', () => {
       poem({ id: 'c', date: '2026-06-01' }),
     ];
     expect(sortByDateDesc(poems).map((p) => p.id)).toEqual(['b', 'c', 'a']);
+  });
+});
+
+describe('mergePoems', () => {
+  it('同じidは重複させず、未知のidだけ足す', () => {
+    const existing = [poem({ id: 'a', date: '2026-01-01' })];
+    const incoming = [
+      poem({ id: 'a', date: '2026-01-01', memo: '別端末で編集' }),
+      poem({ id: 'b', date: '2026-05-01' }),
+    ];
+    const merged = mergePoems(existing, incoming);
+    expect(merged.map((p) => p.id)).toEqual(['b', 'a']);
+    // 衝突したidは既存を優先する
+    expect(merged.find((p) => p.id === 'a')?.memo).toBe('');
+  });
+
+  it('取り込み後も新しい日付が先頭', () => {
+    const merged = mergePoems(
+      [poem({ id: 'a', date: '2025-12-31' })],
+      [poem({ id: 'b', date: '2026-07-07' })],
+    );
+    expect(merged.map((p) => p.id)).toEqual(['b', 'a']);
   });
 });
 
