@@ -7,10 +7,22 @@
       name="description"
       content="俳句・短歌のための歳時記と詠草帳。季語を季節と分類でひき、詠んだ句を季語と結びつけて残す"
     />
-    <meta name="theme-color" content="#f5f3ef" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#191815" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3efe7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#16140f" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <title>saijiki | 歳時記と詠草帳</title>
+    <script>
+      // 描画前に保存済みテーマを反映し、ちらつき(FOUC)を防ぐ。
+      // autoは属性を付けず、CSSのprefers-color-schemeに従わせる。
+      (function () {
+        try {
+          var t = localStorage.getItem('saijiki.theme.v1');
+          if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        } catch (e) {
+          /* localStorageが使えない環境では何もしない */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
