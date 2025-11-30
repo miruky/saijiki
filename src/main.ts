@@ -1,6 +1,7 @@
 import './style.css';
 import { createApp } from './app';
 import { createStore } from './lib/poems';
+import { seasonForDate } from './lib/season';
 import { seedPoems } from './lib/seed';
 
 const root = document.getElementById('app');
@@ -19,4 +20,4 @@ if (poems === null) {
 const d = new Date();
 const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-createApp({ root, store, initialPoems: poems, today });
+createApp({ root, store, initialPoems: poems, today, initialSeason: seasonForDate(d) });
