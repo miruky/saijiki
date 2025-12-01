@@ -14,6 +14,7 @@ import {
   type Season,
 } from './lib/kigo';
 import { formatHash, parseFilter, parseView, type SaijikiFilter, type View } from './lib/filters';
+import { nextIndex } from './lib/nav';
 import {
   DEFAULT_POEM_FILTER,
   deserializePoems,
@@ -205,8 +206,9 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
     const seasonTabs = (Object.keys(SEASON_LABELS) as Season[])
       .map(
         (s) => `
-          <button type="button" class="season-tab" role="tab"
-            aria-selected="${s === filter.season && filter.query.trim() === ''}"
+          <button type="button" class="season-tab" role="tab" id="tab-${s}"
+            aria-controls="results" aria-selected="${s === filter.season && filter.query.trim() === ''}"
+            tabindex="${s === filter.season ? '0' : '-1'}"
             data-season="${s}">${SEASON_LABELS[s]}</button>`,
       )
       .join('');
@@ -218,7 +220,7 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
       .join('');
     return `
       <div class="toolbar">
-        <div class="season-tabs" role="tablist" aria-label="季節">${seasonTabs}</div>
+        <div class="season-tabs" role="tablist" aria-label="季節を選ぶ">${seasonTabs}</div>
         <div class="toolbar-filters">
           <select id="filter-category" aria-label="分類で絞り込む">
             <option value="">すべての分類</option>
@@ -307,13 +309,11 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
   }
 
   function syncSeasonTabs(): void {
-    for (const el of root.querySelectorAll<HTMLElement>('[data-season]')) {
-      if (el.classList.contains('season-tab')) {
-        el.setAttribute(
-          'aria-selected',
-          String(el.dataset.season === filter.season && filter.query.trim() === ''),
-        );
-      }
+    for (const el of root.querySelectorAll<HTMLElement>('.season-tab')) {
+      const isCurrent = el.dataset.season === filter.season;
+      el.setAttribute('aria-selected', String(isCurrent && filter.query.trim() === ''));
+      // ロービングタブ: 現在の季節だけをタブ移動の入口にする
+      el.tabIndex = isCurrent ? 0 : -1;
     }
   }
 
@@ -330,25 +330,42 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
     }
   }
 
+  function selectSeason(season: Season): void {
+    filter = { ...filter, season, query: '' };
+    const search = root.querySelector<HTMLInputElement>('#search');
+    if (search) search.value = '';
+    syncSeasonTabs();
+    updateHero();
+    updateResults('enter');
+    pushFilterToHash();
+  }
+
   function mountSaijiki(main: HTMLElement): void {
     main.innerHTML = `
       <section class="view view-saijiki">
         ${heroMarkup()}
         ${toolbarMarkup()}
-        <div class="results" id="results"></div>
+        <div class="results" id="results" role="tabpanel" tabindex="0"
+          aria-label="季語の一覧"></div>
       </section>`;
 
-    for (const el of main.querySelectorAll<HTMLElement>('.season-tab')) {
-      el.addEventListener('click', () => {
-        filter = { ...filter, season: el.dataset.season as Season, query: '' };
-        const search = main.querySelector<HTMLInputElement>('#search');
-        if (search) search.value = '';
-        syncSeasonTabs();
-        updateHero();
-        updateResults('enter');
-        pushFilterToHash();
-      });
+    const tabs = Array.from(main.querySelectorAll<HTMLButtonElement>('.season-tab'));
+    for (const el of tabs) {
+      el.addEventListener('click', () => selectSeason(el.dataset.season as Season));
     }
+    // 矢印・Home/Endでタブ間を移動して即座に切り替える(WAI-ARIAのタブ)
+    main.querySelector<HTMLElement>('.season-tabs')?.addEventListener('keydown', (e) => {
+      const ke = e as KeyboardEvent;
+      const from = tabs.findIndex((t) => t === document.activeElement);
+      const to = nextIndex(from < 0 ? 0 : from, ke.key, tabs.length);
+      if (to === null) return;
+      ke.preventDefault();
+      const target = tabs[to];
+      if (target) {
+        selectSeason(target.dataset.season as Season);
+        target.focus();
+      }
+    });
     main.querySelector('#filter-category')?.addEventListener('change', (e) => {
       filter = { ...filter, category: (e.target as HTMLSelectElement).value as KigoCategory | '' };
       updateResults('swap');
@@ -663,6 +680,7 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
         if (editingId === id) endEdit();
         poems = poems.filter((p) => p.id !== id);
         commit('swap');
+        announce('詠草を削除しました。');
       });
     }
     for (const el of scope.querySelectorAll<HTMLElement>('[data-edit]')) {
@@ -715,19 +733,28 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
 
   // ---- 外枠と経路 ----
 
-  function render(): void {
+  function render(focusMain = false): void {
     dispose();
     root.innerHTML = `
+      <a class="skip-link" href="#main">本文へスキップ</a>
       ${header()}
-      <main class="site-main" id="main"></main>
+      <main class="site-main" id="main" tabindex="-1"></main>
       <footer class="site-footer">
         <p>歳時記と詠草帳。詠草はこの端末のブラウザにだけ保存されます。</p>
       </footer>`;
     bindHeader();
+    root.querySelector<HTMLAnchorElement>('.skip-link')?.addEventListener('click', (e) => {
+      // ハッシュルーティングを乱さずに本文へフォーカスを移す
+      e.preventDefault();
+      const m = root.querySelector<HTMLElement>('#main');
+      m?.focus();
+      m?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+    });
     const main = root.querySelector<HTMLElement>('#main');
     if (!main) return;
     if (view === 'saijiki') mountSaijiki(main);
     else mountEisou(main);
+    if (focusMain) main.focus();
   }
 
   window.addEventListener('hashchange', () => {
@@ -735,7 +762,7 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
     if (nextView === 'saijiki') filter = parseFilter(location.hash, initialSeason);
     if (nextView !== view) {
       view = nextView;
-      render();
+      render(true);
     } else if (view === 'saijiki') {
       // 同じ画面内でのハッシュ変化(戻る/進む等)は本文だけ追従させる
       syncSeasonTabs();
