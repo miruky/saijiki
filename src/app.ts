@@ -15,6 +15,7 @@ import {
 } from './lib/kigo';
 import { formatHash, parseFilter, parseView, type SaijikiFilter, type View } from './lib/filters';
 import { nextIndex } from './lib/nav';
+import { analyzeMeter } from './lib/meter';
 import {
   DEFAULT_POEM_FILTER,
   deserializePoems,
@@ -58,6 +59,29 @@ function formatDateJa(iso: string): string {
   if (!m) return iso;
   const [, y, mo, d] = m;
   return `${Number(y)}年${Number(mo)}月${Number(d)}日`;
+}
+
+/** よみ(かな)から五七五の拍を組んだ短い表示。よみが空なら空文字 */
+function meterMarkup(reading: string, kind: PoemKind): string {
+  if (reading.trim() === '') return '';
+  const a = analyzeMeter(reading, kind);
+  const pattern = a.segments
+    .map((n) => `<span class="meter-seg num">${n}</span>`)
+    .join('<span class="meter-sep" aria-hidden="true">・</span>');
+  const status = a.fits
+    ? `<span class="meter-status is-fit">${icons.check}<span>定型</span></span>`
+    : `<span class="meter-status">${a.diff > 0 ? `字余り +${a.diff}` : `字足らず ${a.diff}`}</span>`;
+  const summary = a.fits
+    ? `${a.total}拍、定型に合う`
+    : a.diff > 0
+      ? `${a.total}拍、定型より${a.diff}拍多い`
+      : `${a.total}拍、定型より${-a.diff}拍少ない`;
+  return (
+    `<span class="meter-pattern">${pattern}</span>` +
+    `<span class="meter-total"><span class="num">${a.total}</span>拍</span>` +
+    status +
+    `<span class="sr-only">(${summary})</span>`
+  );
 }
 
 function media(query: string): boolean {
@@ -412,12 +436,14 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
             ${esc(p.kigo)}${entry ? `・${SEASON_LABELS[entry.season]}` : ''}</span>`
         : '<span class="poem-kigo muki">無季</span>';
     const editing = p.id === editingId;
+    const meter = meterMarkup(p.reading ?? '', p.kind);
     return `
       <li class="poem reveal${editing ? ' is-editing' : ''}" style="--i:${index}" data-poem="${esc(p.id)}">
         <p class="poem-text">${esc(p.text)}</p>
         <div class="poem-meta">
           <span class="poem-kind">${KIND_LABELS[p.kind]}</span>
           ${kigoTag}
+          ${meter !== '' ? `<span class="meter poem-meter">${meter}</span>` : ''}
           <span class="poem-date">${formatDateJa(p.date)}</span>
           <span class="poem-tools">
             <button type="button" class="icon-button" data-copy="${esc(p.id)}"
@@ -500,6 +526,12 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
         <form class="compose" id="compose-form">
           <textarea name="text" id="compose-text" rows="2" required
             placeholder="蝉時雨 やみて夕立 来たりけり" aria-label="本文"></textarea>
+          <div class="compose-reading">
+            <input name="reading" id="compose-reading" class="grow"
+              placeholder="よみ(任意・分かち書きで五七五を確かめる)" aria-label="よみ(かな)"
+              autocomplete="off" />
+            <p class="meter" data-meter hidden></p>
+          </div>
           <div class="compose-row">
             <select name="kind" aria-label="形式">${kindOptions}</select>
             <input name="kigo" id="compose-kigo" list="kigo-words" value="${esc(composeKigo)}"
@@ -546,6 +578,7 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
       const fields = {
         kind: (read('kind') || 'haiku') as PoemKind,
         text,
+        reading: read('reading'),
         kigo: read('kigo'),
         date,
         memo: read('memo'),
@@ -555,12 +588,14 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
         endEdit();
         form.reset();
         resetComposeDate(main);
+        updateComposeMeter();
         commit('swap');
         announce('詠草を直しました。');
       } else {
         poems.push({ id: newPoemId(), ...fields });
         form.reset();
         resetComposeDate(main);
+        updateComposeMeter();
         commit('swap');
         main.querySelector<HTMLTextAreaElement>('#compose-text')?.focus();
       }
@@ -572,16 +607,35 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
         endEdit();
         form?.reset();
         resetComposeDate(main);
+        updateComposeMeter();
         updatePoems('swap');
       });
 
     bindEisouControls(main);
+    bindComposeMeter(main);
     updatePoems('enter');
   }
 
   function resetComposeDate(scope: ParentNode): void {
     const dateInput = scope.querySelector<HTMLInputElement>('input[name="date"]');
     if (dateInput) dateInput.value = today;
+  }
+
+  /** よみと形式から、作成フォームの拍メーターを描き直す */
+  function updateComposeMeter(): void {
+    const meter = root.querySelector<HTMLElement>('#compose-form [data-meter]');
+    const reading = root.querySelector<HTMLInputElement>('#compose-reading');
+    const kindSel = root.querySelector<HTMLSelectElement>('#compose-form [name="kind"]');
+    if (!meter || !reading) return;
+    const markup = meterMarkup(reading.value, (kindSel?.value as PoemKind) || 'haiku');
+    meter.innerHTML = markup;
+    meter.hidden = markup === '';
+  }
+
+  function bindComposeMeter(scope: HTMLElement): void {
+    scope.querySelector<HTMLInputElement>('#compose-reading')?.addEventListener('input', updateComposeMeter);
+    scope.querySelector<HTMLSelectElement>('#compose-form [name="kind"]')?.addEventListener('change', updateComposeMeter);
+    updateComposeMeter();
   }
 
   function bindEisouControls(scope: HTMLElement): void {
@@ -649,9 +703,11 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
     editingId = id;
     (form.querySelector('[name="text"]') as HTMLTextAreaElement).value = p.text;
     (form.querySelector('[name="kind"]') as HTMLSelectElement).value = p.kind;
+    (form.querySelector('[name="reading"]') as HTMLInputElement).value = p.reading ?? '';
     (form.querySelector('[name="kigo"]') as HTMLInputElement).value = p.kigo;
     (form.querySelector('[name="date"]') as HTMLInputElement).value = p.date;
     (form.querySelector('[name="memo"]') as HTMLInputElement).value = p.memo;
+    updateComposeMeter();
     syncComposeMode();
     updatePoems('swap');
     form.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
