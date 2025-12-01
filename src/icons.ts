@@ -23,6 +23,17 @@ export const icons = {
   ),
   download: svg('<path d="M12 3v11"/><path d="m7.5 10 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/>'),
   upload: svg('<path d="M12 14.5V3.5"/><path d="m7.5 8 4.5-4.5 4.5 4.5"/><path d="M5 20h14"/>'),
+  edit: svg('<path d="M4 20h4l10-10-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>'),
+  copy: svg('<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/>'),
+  check: svg('<path d="m5 12.5 4.5 4.5L19 6.5"/>'),
+  close: svg('<path d="M6 6l12 12"/><path d="M18 6 6 18"/>'),
+  // 並び順: 新しい順(下向き)・古い順(上向き)
+  sortDesc: svg(
+    '<path d="M7 4v15.5"/><path d="m3.5 16 3.5 3.5L10.5 16"/><path d="M14 6h6"/><path d="M14 11h4"/><path d="M14 16h2"/>',
+  ),
+  sortAsc: svg(
+    '<path d="M7 20V4.5"/><path d="m3.5 8 3.5-3.5L10.5 8"/><path d="M14 6h2"/><path d="M14 11h4"/><path d="M14 16h6"/>',
+  ),
   // テーマ: 自動(円を明暗で半分ずつ)
   auto: svg(
     '<circle cx="12" cy="12" r="8.5"/><path d="M12 6a6 6 0 0 1 0 12z" fill="currentColor" stroke="none"/>',
