@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   createStore,
   deserializePoems,
+  filterPoems,
   mergePoems,
   serializePoems,
+  sortByDate,
   sortByDateDesc,
+  updatePoem,
   type Poem,
 } from './poems';
+import type { Season } from './kigo';
 import { seedPoems } from './seed';
 
 function poem(over: Partial<Poem>): Poem {
@@ -51,6 +55,69 @@ describe('sortByDateDesc', () => {
       poem({ id: 'c', date: '2026-06-01' }),
     ];
     expect(sortByDateDesc(poems).map((p) => p.id)).toEqual(['b', 'c', 'a']);
+  });
+});
+
+describe('sortByDate', () => {
+  it('昇順は古い日付が先頭、同日は入力順を保つ', () => {
+    const poems = [
+      poem({ id: 'a', date: '2026-06-01' }),
+      poem({ id: 'b', date: '2026-01-01' }),
+      poem({ id: 'c', date: '2026-06-01' }),
+    ];
+    expect(sortByDate(poems, 'asc').map((p) => p.id)).toEqual(['b', 'a', 'c']);
+  });
+});
+
+describe('filterPoems', () => {
+  const seasonOf = (kigo: string): Season | undefined =>
+    ({ 桜: 'spring', 蝉: 'summer', 紅葉: 'autumn' })[kigo] as Season | undefined;
+  const poems = [
+    poem({ id: 'h-spring', kind: 'haiku', kigo: '桜', text: '花の雲' }),
+    poem({ id: 't-summer', kind: 'tanka', kigo: '蝉', text: '夏の声' }),
+    poem({ id: 'h-muki', kind: 'haiku', kigo: '', text: '無季の句', memo: '街角で' }),
+  ];
+
+  it('形式で絞り込む', () => {
+    const hit = filterPoems(poems, { kind: 'tanka', season: 'all', text: '' }, seasonOf);
+    expect(hit.map((p) => p.id)).toEqual(['t-summer']);
+  });
+
+  it('季語の季節で絞り込む', () => {
+    const hit = filterPoems(poems, { kind: 'all', season: 'spring', text: '' }, seasonOf);
+    expect(hit.map((p) => p.id)).toEqual(['h-spring']);
+  });
+
+  it('無季だけを取り出す', () => {
+    const hit = filterPoems(poems, { kind: 'all', season: 'muki', text: '' }, seasonOf);
+    expect(hit.map((p) => p.id)).toEqual(['h-muki']);
+  });
+
+  it('本文・季語・覚え書きを横断して検索する', () => {
+    expect(filterPoems(poems, { kind: 'all', season: 'all', text: '街角' }, seasonOf)).toHaveLength(
+      1,
+    );
+    expect(filterPoems(poems, { kind: 'all', season: 'all', text: '蝉' }, seasonOf)).toHaveLength(
+      1,
+    );
+  });
+});
+
+describe('updatePoem', () => {
+  it('idの詠草だけを差し替え、他とidは保つ', () => {
+    const poems = [poem({ id: 'a', memo: '' }), poem({ id: 'b', memo: '' })];
+    const next = updatePoem(poems, 'a', { memo: '推敲した', text: '改作' });
+    expect(next.find((p) => p.id === 'a')).toMatchObject({
+      id: 'a',
+      memo: '推敲した',
+      text: '改作',
+    });
+    expect(next.find((p) => p.id === 'b')?.memo).toBe('');
+  });
+
+  it('見つからなければそのまま', () => {
+    const poems = [poem({ id: 'a' })];
+    expect(updatePoem(poems, 'zzz', { memo: 'x' })).toEqual(poems);
   });
 });
 
