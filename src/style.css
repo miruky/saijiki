@@ -142,6 +142,25 @@ a {
   border-radius: 2px;
 }
 
+/* キーボードで本文へ飛ぶための導線。フォーカス時だけ現れる */
+.skip-link {
+  position: fixed;
+  left: 16px;
+  top: -64px;
+  z-index: 40;
+  padding: 10px 18px;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: top 0.2s var(--ease);
+}
+
+.skip-link:focus {
+  top: 16px;
+}
+
 svg {
   width: 18px;
   height: 18px;
