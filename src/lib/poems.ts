@@ -19,6 +19,11 @@ export interface Poem {
   /** 詠んだ日(YYYY-MM-DD) */
   date: string;
   memo: string;
+  /**
+   * 本文のよみ(かな)。任意。五七五の拍を数えるために使う。
+   * 漢字交じりの本文からは拍を正しく数えられないため、入力されたときだけ拍を表示する。
+   */
+  reading?: string;
 }
 
 export function newPoemId(): string {
@@ -39,7 +44,9 @@ function isPoem(value: unknown): value is Poem {
     typeof p.kigo === 'string' &&
     typeof p.date === 'string' &&
     DATE_RE.test(p.date) &&
-    typeof p.memo === 'string'
+    typeof p.memo === 'string' &&
+    // readingは後から足した任意項目。無いか文字列なら受け入れる
+    (p.reading === undefined || typeof p.reading === 'string')
   );
 }
 
