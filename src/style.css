@@ -78,6 +78,11 @@
   box-sizing: border-box;
 }
 
+/* hidden属性は display を持つ要素(.link-button等)に負けるので明示する */
+[hidden] {
+  display: none !important;
+}
+
 html {
   height: 100%;
 }
@@ -763,6 +768,11 @@ select:focus,
 }
 
 .icon-button:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.icon-button.danger:hover {
   color: var(--danger);
   border-color: color-mix(in srgb, var(--danger) 50%, transparent);
 }
@@ -837,19 +847,65 @@ select:focus,
   margin-left: auto;
 }
 
-.eisou-toolbar {
+.compose.is-editing {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+
+.compose-cancel {
+  font-size: 0.84rem;
+}
+
+.eisou-controls {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px 28px;
   flex-wrap: wrap;
-  padding-bottom: 6px;
+  margin-bottom: 12px;
+}
+
+.eisou-filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.eisou-filters .search {
+  min-width: 180px;
 }
 
 .eisou-actions {
   display: inline-flex;
   align-items: center;
   gap: 20px;
+}
+
+.sort-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 0.86rem;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.2s var(--ease),
+    color 0.2s var(--ease);
+}
+
+.sort-toggle:hover {
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.sort-toggle svg {
+  width: 15px;
+  height: 15px;
 }
 
 .poem {
@@ -871,8 +927,33 @@ select:focus,
   transition: transform 0.35s var(--ease);
 }
 
-.poem:hover::before {
+.poem:hover::before,
+.poem.is-editing::before {
   transform: scaleY(1);
+}
+
+.poem.is-editing {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.poem-tools {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.55;
+  transition: opacity 0.2s var(--ease);
+}
+
+.poem:hover .poem-tools,
+.poem:focus-within .poem-tools,
+.poem.is-editing .poem-tools {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .poem-tools {
+    opacity: 1;
+  }
 }
 
 .poem-text {
