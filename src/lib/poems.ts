@@ -1,5 +1,7 @@
 // 詠草(自作の句・歌)の型・検証・永続化。
 
+import type { Season } from './kigo';
+
 export type PoemKind = 'haiku' | 'tanka';
 
 export const KIND_LABELS: Record<PoemKind, string> = {
@@ -72,12 +74,64 @@ export function mergePoems(existing: Poem[], incoming: Poem[]): Poem[] {
   return sortByDateDesc(merged);
 }
 
-/** 新しい日付が先頭。同日は入力順を保つ */
-export function sortByDateDesc(poems: Poem[]): Poem[] {
+export type SortDir = 'desc' | 'asc';
+
+/** 日付で並べ替える。同日は入力順を保つ(安定ソート) */
+export function sortByDate(poems: Poem[], dir: SortDir = 'desc'): Poem[] {
+  const sign = dir === 'desc' ? 1 : -1;
   return poems
     .map((poem, index) => ({ poem, index }))
-    .sort((a, b) => b.poem.date.localeCompare(a.poem.date) || a.index - b.index)
+    .sort((a, b) => sign * b.poem.date.localeCompare(a.poem.date) || a.index - b.index)
     .map((k) => k.poem);
+}
+
+/** 新しい日付が先頭。保存時の正準順はこれ */
+export function sortByDateDesc(poems: Poem[]): Poem[] {
+  return sortByDate(poems, 'desc');
+}
+
+/** 季語の有無と季節での絞り込み条件。allはすべて、mukiは無季(季語なし) */
+export interface PoemFilter {
+  kind: PoemKind | 'all';
+  season: Season | 'all' | 'muki';
+  /** 本文・季語・覚え書きへの部分一致 */
+  text: string;
+}
+
+export const DEFAULT_POEM_FILTER: PoemFilter = {
+  kind: 'all',
+  season: 'all',
+  text: '',
+};
+
+/**
+ * 詠草を絞り込む。季語から季節を引く処理は外から渡す(このモジュールは
+ * 季語データに依存しない)。並びは入力のまま変えない。
+ */
+export function filterPoems(
+  poems: Poem[],
+  filter: PoemFilter,
+  seasonOf: (kigo: string) => Season | undefined,
+): Poem[] {
+  const text = filter.text.trim();
+  return poems.filter((p) => {
+    if (filter.kind !== 'all' && p.kind !== filter.kind) return false;
+    if (filter.season === 'muki') {
+      if (p.kigo !== '') return false;
+    } else if (filter.season !== 'all') {
+      if (p.kigo === '' || seasonOf(p.kigo) !== filter.season) return false;
+    }
+    if (text !== '') {
+      const haystack = [p.text, p.kigo, p.memo].join(' ');
+      if (!haystack.includes(text)) return false;
+    }
+    return true;
+  });
+}
+
+/** idの詠草だけを差し替える。idはそのまま、見つからなければ変化なし */
+export function updatePoem(poems: Poem[], id: string, patch: Partial<Omit<Poem, 'id'>>): Poem[] {
+  return poems.map((p) => (p.id === id ? { ...p, ...patch } : p));
 }
 
 export interface PoemStore {

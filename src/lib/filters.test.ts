@@ -27,6 +27,13 @@ describe('parseFilter', () => {
     expect(f.category).toBe('');
   });
 
+  it('季節が無いときは渡した季節に落とす(いまの季節で開く)', () => {
+    expect(parseFilter('#/', 'autumn').season).toBe('autumn');
+    expect(parseFilter('#/?cat=doubutsu', 'winter').season).toBe('winter');
+    // 明示された季節は fallback より優先
+    expect(parseFilter('#/?season=summer', 'winter').season).toBe('summer');
+  });
+
   it('検索語は長すぎると切り詰める', () => {
     const f = parseFilter(`#/?q=${'あ'.repeat(100)}`);
     expect(f.query.length).toBe(64);
@@ -34,14 +41,10 @@ describe('parseFilter', () => {
 });
 
 describe('formatHash', () => {
-  it('既定値だけなら #/ を返す', () => {
-    expect(formatHash(DEFAULT_FILTER)).toBe('#/');
-  });
-
-  it('既定でない値だけを載せる', () => {
+  it('検索していないときは季節を必ず載せる(再読込で戻れる)', () => {
     expect(formatHash({ season: 'winter', category: '', query: '' })).toBe('#/?season=winter');
     expect(formatHash({ season: 'spring', category: 'doubutsu', query: '' })).toBe(
-      '#/?cat=doubutsu',
+      '#/?season=spring&cat=doubutsu',
     );
   });
 

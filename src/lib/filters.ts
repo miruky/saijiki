@@ -40,25 +40,33 @@ export function parseView(hash: string): View {
   return splitHash(hash).path === 'eisou' ? 'eisou' : 'saijiki';
 }
 
-export function parseFilter(hash: string): SaijikiFilter {
+/**
+ * ハッシュから絞り込みを取り出す。季節が省かれているときは fallbackSeason に落とす。
+ * 起動時はここに「いまの季節」を渡し、何も指定がなければ時季に合った季節で開く。
+ */
+export function parseFilter(
+  hash: string,
+  fallbackSeason: Season = DEFAULT_FILTER.season,
+): SaijikiFilter {
   const { params } = splitHash(hash);
   const season = params.get('season') ?? '';
   const category = params.get('cat') ?? '';
   return {
-    season: isSeason(season) ? season : DEFAULT_FILTER.season,
+    season: isSeason(season) ? season : fallbackSeason,
     category: isCategory(category) ? category : '',
     query: (params.get('q') ?? '').slice(0, 64),
   };
 }
 
-/** 既定値の項目は省いて短いハッシュにする */
+/**
+ * 絞り込みをハッシュへ。検索中は季節をまたぐので q だけを載せ、そうでなければ
+ * 選んでいる季節を必ず載せる(再読込・共有で同じ季節に戻れるように)。
+ */
 export function formatHash(filter: SaijikiFilter): string {
   const params = new URLSearchParams();
-  if (filter.query.trim() === '') {
-    if (filter.season !== DEFAULT_FILTER.season) params.set('season', filter.season);
-  }
+  const query = filter.query.trim();
+  if (query !== '') params.set('q', query);
+  else params.set('season', filter.season);
   if (filter.category !== '') params.set('cat', filter.category);
-  if (filter.query.trim() !== '') params.set('q', filter.query.trim());
-  const query = params.toString();
-  return query === '' ? '#/' : `#/?${query}`;
+  return `#/?${params.toString()}`;
 }
