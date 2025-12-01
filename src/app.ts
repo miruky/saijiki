@@ -15,14 +15,20 @@ import {
 } from './lib/kigo';
 import { formatHash, parseFilter, parseView, type SaijikiFilter, type View } from './lib/filters';
 import {
+  DEFAULT_POEM_FILTER,
   deserializePoems,
+  filterPoems,
   KIND_LABELS,
   mergePoems,
   newPoemId,
+  sortByDate,
   sortByDateDesc,
+  updatePoem,
   type Poem,
+  type PoemFilter,
   type PoemKind,
   type PoemStore,
+  type SortDir,
 } from './lib/poems';
 import {
   loadTheme,
@@ -73,15 +79,23 @@ export interface AppDeps {
   store: PoemStore;
   initialPoems: Poem[];
   today: string;
+  /** 季節の指定がないときに開く季節(起動日の時季) */
+  initialSeason: Season;
 }
 
-export function createApp({ root, store, initialPoems, today }: AppDeps): void {
+export function createApp({ root, store, initialPoems, today, initialSeason }: AppDeps): void {
   let poems = sortByDateDesc(initialPoems);
   let view: View = parseView(location.hash);
-  let filter: SaijikiFilter = parseFilter(location.hash);
+  let filter: SaijikiFilter = parseFilter(location.hash, initialSeason);
   /** 「この季語で詠む」で詠草帳へ持ち越す季語 */
   let composeKigo = '';
   let themeChoice = readTheme();
+  /** 詠草帳の絞り込みと並び順、編集中の詠草 */
+  let poemFilter: PoemFilter = { ...DEFAULT_POEM_FILTER };
+  let poemSort: SortDir = 'desc';
+  let editingId: string | null = null;
+
+  const seasonOf = (kigo: string): Season | undefined => findKigo(KIGO, kigo)?.season;
 
   /** 画面を組み替えるときに後始末する(スクロール監視やオブザーバ) */
   let disposers: Array<() => void> = [];
@@ -380,54 +394,65 @@ export function createApp({ root, store, initialPoems, today }: AppDeps): void {
             ${entry ? `<span class="season-dot season-${entry.season}" aria-hidden="true"></span>` : ''}
             ${esc(p.kigo)}${entry ? `・${SEASON_LABELS[entry.season]}` : ''}</span>`
         : '<span class="poem-kigo muki">無季</span>';
+    const editing = p.id === editingId;
     return `
-      <li class="poem reveal" style="--i:${index}">
+      <li class="poem reveal${editing ? ' is-editing' : ''}" style="--i:${index}" data-poem="${esc(p.id)}">
         <p class="poem-text">${esc(p.text)}</p>
         <div class="poem-meta">
           <span class="poem-kind">${KIND_LABELS[p.kind]}</span>
           ${kigoTag}
           <span class="poem-date">${formatDateJa(p.date)}</span>
-          <button type="button" class="icon-button" data-del="${index}"
-            aria-label="この詠草を削除">${icons.trash}</button>
+          <span class="poem-tools">
+            <button type="button" class="icon-button" data-copy="${esc(p.id)}"
+              aria-label="この句歌を書き写す(コピー)">${icons.copy}</button>
+            <button type="button" class="icon-button" data-edit="${esc(p.id)}"
+              aria-label="この詠草を直す">${icons.edit}</button>
+            <button type="button" class="icon-button danger" data-del="${esc(p.id)}"
+              aria-label="この詠草を削除">${icons.trash}</button>
+          </span>
         </div>
         ${p.memo !== '' ? `<p class="poem-memo">${esc(p.memo)}</p>` : ''}
       </li>`;
   }
 
-  function poemsMarkup(): string {
-    const count = `<span class="num">${poems.length}</span> 句歌`;
-    if (poems.length === 0) {
-      return `
-        <div class="eisou-toolbar">
-          <p class="results-count">${count}</p>
-          ${eisouActionsMarkup()}
-        </div>
-        <p class="empty">詠草はまだありません。歳時記で季語をひき、最初の一句を書き留めてください。</p>`;
-    }
-    return `
-      <div class="eisou-toolbar">
-        <p class="results-count">${count}</p>
-        ${eisouActionsMarkup()}
-      </div>
-      <ul class="poems">${poems.map((p, i) => poemItem(p, i)).join('')}</ul>`;
+  function displayedPoems(): Poem[] {
+    return sortByDate(filterPoems(poems, poemFilter, seasonOf), poemSort);
   }
 
-  function eisouActionsMarkup(): string {
-    return `
-      <div class="eisou-actions">
-        <button type="button" class="link-button" data-export ${poems.length === 0 ? 'disabled' : ''}>
-          ${icons.download}<span>書き出す</span></button>
-        <label class="link-button" for="import-file">${icons.upload}<span>取り込む</span></label>
-        <input type="file" id="import-file" accept="application/json,.json" hidden />
-      </div>`;
+  function isPoemFilterActive(): boolean {
+    return (
+      poemFilter.kind !== 'all' || poemFilter.season !== 'all' || poemFilter.text.trim() !== ''
+    );
+  }
+
+  function poemCountMarkup(): string {
+    if (poems.length === 0) return '<span class="num">0</span> 句歌';
+    const shown = displayedPoems().length;
+    return isPoemFilterActive()
+      ? `全 <span class="num">${poems.length}</span> 件中 <span class="num">${shown}</span> 句歌`
+      : `<span class="num">${poems.length}</span> 句歌`;
+  }
+
+  function poemListMarkup(): string {
+    if (poems.length === 0) {
+      return '<p class="empty">詠草はまだありません。歳時記で季語をひき、最初の一句を書き留めてください。</p>';
+    }
+    const shown = displayedPoems();
+    if (shown.length === 0) {
+      return '<p class="empty">条件に当てはまる詠草がありません。絞り込みをゆるめてみてください。</p>';
+    }
+    return `<ul class="poems">${shown.map((p, i) => poemItem(p, i)).join('')}</ul>`;
   }
 
   function updatePoems(mode: 'enter' | 'swap'): void {
     const box = root.querySelector<HTMLElement>('#poem-results');
     if (!box) return;
-    box.innerHTML = poemsMarkup();
+    box.innerHTML = poemListMarkup();
     reveal(box, mode);
     bindPoemActions(box);
+    const count = root.querySelector<HTMLElement>('[data-poem-count]');
+    if (count) count.innerHTML = poemCountMarkup();
+    syncEisouActions();
   }
 
   function commit(mode: 'enter' | 'swap' = 'swap'): void {
@@ -441,6 +466,13 @@ export function createApp({ root, store, initialPoems, today }: AppDeps): void {
     const kindOptions = (Object.keys(KIND_LABELS) as PoemKind[])
       .map((k) => `<option value="${k}">${KIND_LABELS[k]}</option>`)
       .join('');
+    const filterKindOptions = '<option value="all">すべての形式</option>' + kindOptions;
+    const filterSeasonOptions =
+      '<option value="all">すべての季</option>' +
+      (Object.keys(SEASON_LABELS) as Season[])
+        .map((s) => `<option value="${s}">${SEASON_LABELS[s]}</option>`)
+        .join('') +
+      '<option value="muki">無季</option>';
     main.innerHTML = `
       <section class="view view-eisou">
         <header class="eisou-head">
@@ -460,50 +492,185 @@ export function createApp({ root, store, initialPoems, today }: AppDeps): void {
             </datalist>
             <input name="date" type="date" value="${today}" required aria-label="詠んだ日" />
             <input name="memo" placeholder="覚え書き(任意)" aria-label="覚え書き" class="grow" />
-            <button type="submit" class="button primary">${icons.plus}<span>書き留める</span></button>
+            <button type="button" class="link-button compose-cancel" data-compose-cancel hidden>
+              ${icons.close}<span>やめる</span></button>
+            <button type="submit" class="button primary">${icons.plus}<span data-submit-label>書き留める</span></button>
           </div>
         </form>
+        <div class="eisou-controls">
+          <div class="eisou-filters">
+            <select data-poem-kind aria-label="形式で絞り込む">${filterKindOptions}</select>
+            <select data-poem-season aria-label="季節で絞り込む">${filterSeasonOptions}</select>
+            <label class="search">${icons.search}
+              <input type="search" data-poem-search placeholder="詠草を探す"
+                aria-label="詠草を本文・季語・覚え書きで探す" autocomplete="off" /></label>
+            <button type="button" class="sort-toggle" data-poem-sort></button>
+          </div>
+          <div class="eisou-actions">
+            <button type="button" class="link-button" data-export>${icons.download}<span>書き出す</span></button>
+            <label class="link-button" for="import-file">${icons.upload}<span>取り込む</span></label>
+            <input type="file" id="import-file" accept="application/json,.json" hidden />
+          </div>
+        </div>
+        <p class="results-count" data-poem-count></p>
         <div class="poem-results" id="poem-results"></div>
       </section>`;
 
     composeKigo = '';
-    main.querySelector<HTMLFormElement>('#compose-form')?.addEventListener('submit', (e) => {
+    editingId = null;
+    const form = main.querySelector<HTMLFormElement>('#compose-form');
+    form?.addEventListener('submit', (e) => {
       e.preventDefault();
       const fd = new FormData(e.currentTarget as HTMLFormElement);
       const read = (key: string): string => String(fd.get(key) ?? '').trim();
       const text = read('text');
       const date = read('date');
       if (text === '' || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
-      poems.push({
-        id: newPoemId(),
+      const fields = {
         kind: (read('kind') || 'haiku') as PoemKind,
         text,
         kigo: read('kigo'),
         date,
         memo: read('memo'),
-      });
-      (e.currentTarget as HTMLFormElement).reset();
-      const dateInput = main.querySelector<HTMLInputElement>('input[name="date"]');
-      if (dateInput) dateInput.value = today;
-      commit('swap');
-      main.querySelector<HTMLTextAreaElement>('#compose-text')?.focus();
+      };
+      if (editingId !== null) {
+        poems = updatePoem(poems, editingId, fields);
+        endEdit();
+        form.reset();
+        resetComposeDate(main);
+        commit('swap');
+        announce('詠草を直しました。');
+      } else {
+        poems.push({ id: newPoemId(), ...fields });
+        form.reset();
+        resetComposeDate(main);
+        commit('swap');
+        main.querySelector<HTMLTextAreaElement>('#compose-text')?.focus();
+      }
     });
 
+    main
+      .querySelector<HTMLButtonElement>('[data-compose-cancel]')
+      ?.addEventListener('click', () => {
+        endEdit();
+        form?.reset();
+        resetComposeDate(main);
+        updatePoems('swap');
+      });
+
+    bindEisouControls(main);
     updatePoems('enter');
+  }
+
+  function resetComposeDate(scope: ParentNode): void {
+    const dateInput = scope.querySelector<HTMLInputElement>('input[name="date"]');
+    if (dateInput) dateInput.value = today;
+  }
+
+  function bindEisouControls(scope: HTMLElement): void {
+    const kind = scope.querySelector<HTMLSelectElement>('[data-poem-kind]');
+    kind?.addEventListener('change', () => {
+      poemFilter = { ...poemFilter, kind: kind.value as PoemFilter['kind'] };
+      updatePoems('swap');
+    });
+    const season = scope.querySelector<HTMLSelectElement>('[data-poem-season]');
+    season?.addEventListener('change', () => {
+      poemFilter = { ...poemFilter, season: season.value as PoemFilter['season'] };
+      updatePoems('swap');
+    });
+    const search = scope.querySelector<HTMLInputElement>('[data-poem-search]');
+    search?.addEventListener('input', () => {
+      poemFilter = { ...poemFilter, text: search.value };
+      updatePoems('swap');
+    });
+    scope.querySelector<HTMLButtonElement>('[data-poem-sort]')?.addEventListener('click', () => {
+      poemSort = poemSort === 'desc' ? 'asc' : 'desc';
+      syncSortToggle();
+      updatePoems('swap');
+    });
+    scope.querySelector<HTMLButtonElement>('[data-export]')?.addEventListener('click', exportPoems);
+    scope.querySelector<HTMLInputElement>('#import-file')?.addEventListener('change', (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) void importPoems(file);
+      (e.target as HTMLInputElement).value = '';
+    });
+    syncSortToggle();
+    syncComposeMode();
+  }
+
+  function syncSortToggle(): void {
+    const btn = root.querySelector<HTMLButtonElement>('[data-poem-sort]');
+    if (!btn) return;
+    const desc = poemSort === 'desc';
+    btn.innerHTML = `${desc ? icons.sortDesc : icons.sortAsc}<span>${desc ? '新しい順' : '古い順'}</span>`;
+    btn.setAttribute('aria-label', `並び順: ${desc ? '新しい順' : '古い順'}(押すと入れ替え)`);
+  }
+
+  function syncEisouActions(): void {
+    const exportBtn = root.querySelector<HTMLButtonElement>('[data-export]');
+    if (exportBtn) exportBtn.toggleAttribute('disabled', poems.length === 0);
+  }
+
+  function syncComposeMode(): void {
+    const label = root.querySelector<HTMLElement>('[data-submit-label]');
+    const cancel = root.querySelector<HTMLButtonElement>('[data-compose-cancel]');
+    const form = root.querySelector<HTMLFormElement>('#compose-form');
+    if (label) label.textContent = editingId !== null ? '直す' : '書き留める';
+    if (cancel) cancel.hidden = editingId === null;
+    form?.classList.toggle('is-editing', editingId !== null);
+  }
+
+  function endEdit(): void {
+    editingId = null;
+    syncComposeMode();
+  }
+
+  function startEdit(id: string): void {
+    const p = poems.find((x) => x.id === id);
+    const form = root.querySelector<HTMLFormElement>('#compose-form');
+    if (!p || !form) return;
+    editingId = id;
+    (form.querySelector('[name="text"]') as HTMLTextAreaElement).value = p.text;
+    (form.querySelector('[name="kind"]') as HTMLSelectElement).value = p.kind;
+    (form.querySelector('[name="kigo"]') as HTMLInputElement).value = p.kigo;
+    (form.querySelector('[name="date"]') as HTMLInputElement).value = p.date;
+    (form.querySelector('[name="memo"]') as HTMLInputElement).value = p.memo;
+    syncComposeMode();
+    updatePoems('swap');
+    form.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+    form.querySelector<HTMLTextAreaElement>('#compose-text')?.focus();
+  }
+
+  async function copyPoem(id: string): Promise<void> {
+    const p = poems.find((x) => x.id === id);
+    if (!p) return;
+    if (!navigator.clipboard) {
+      announce('この環境では書き写せません。本文を選択してコピーしてください。');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(p.text);
+      announce('句歌を書き写しました(クリップボードへ)。');
+    } catch {
+      announce('書き写せませんでした。本文を選択してコピーしてください。');
+    }
   }
 
   function bindPoemActions(scope: HTMLElement): void {
     for (const el of scope.querySelectorAll<HTMLElement>('[data-del]')) {
       el.addEventListener('click', () => {
-        poems.splice(Number(el.dataset.del), 1);
+        const id = el.dataset.del ?? '';
+        if (editingId === id) endEdit();
+        poems = poems.filter((p) => p.id !== id);
         commit('swap');
       });
     }
-    scope.querySelector<HTMLButtonElement>('[data-export]')?.addEventListener('click', exportPoems);
-    scope.querySelector<HTMLInputElement>('#import-file')?.addEventListener('change', (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) void importPoems(file);
-    });
+    for (const el of scope.querySelectorAll<HTMLElement>('[data-edit]')) {
+      el.addEventListener('click', () => startEdit(el.dataset.edit ?? ''));
+    }
+    for (const el of scope.querySelectorAll<HTMLElement>('[data-copy]')) {
+      el.addEventListener('click', () => void copyPoem(el.dataset.copy ?? ''));
+    }
   }
 
   function exportPoems(): void {
@@ -565,7 +732,7 @@ export function createApp({ root, store, initialPoems, today }: AppDeps): void {
 
   window.addEventListener('hashchange', () => {
     const nextView = parseView(location.hash);
-    if (nextView === 'saijiki') filter = parseFilter(location.hash);
+    if (nextView === 'saijiki') filter = parseFilter(location.hash, initialSeason);
     if (nextView !== view) {
       view = nextView;
       render();
@@ -578,6 +745,21 @@ export function createApp({ root, store, initialPoems, today }: AppDeps): void {
       if (category) category.value = filter.category;
       updateHero();
       updateResults('swap');
+    }
+  });
+
+  // 「/」で検索へ。文字入力中は邪魔しない。
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const active = document.activeElement as HTMLElement | null;
+    const tag = active?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || active?.isContentEditable) return;
+    const target = root.querySelector<HTMLInputElement>(
+      view === 'saijiki' ? '#search' : '[data-poem-search]',
+    );
+    if (target) {
+      e.preventDefault();
+      target.focus();
     }
   });
 
