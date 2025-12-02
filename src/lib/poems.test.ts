@@ -4,6 +4,7 @@ import {
   deserializePoems,
   filterPoems,
   mergePoems,
+  poemsToText,
   serializePoems,
   sortByDate,
   sortByDateDesc,
@@ -24,6 +25,30 @@ function poem(over: Partial<Poem>): Poem {
     ...over,
   };
 }
+
+describe('poemsToText', () => {
+  it('本文・形式・季語・日付を読みやすく綴る', () => {
+    const text = poemsToText([
+      poem({ text: '蝉時雨', kigo: '蝉', kind: 'haiku', date: '2026-07-01' }),
+    ]);
+    expect(text).toBe('蝉時雨\n俳句 ・ 季語: 蝉 ・ 2026-07-01');
+  });
+
+  it('よみと覚え書きは在るときだけ添える', () => {
+    const text = poemsToText([
+      poem({ text: '雪', reading: 'ゆき', memo: '初雪', kigo: '雪', date: '2026-12-20' }),
+    ]);
+    expect(text).toBe('雪\n（ゆき）\n俳句 ・ 季語: 雪 ・ 2026-12-20\n覚え書き: 初雪');
+  });
+
+  it('無季は季語を書かない。複数は空行で区切る', () => {
+    const text = poemsToText([
+      poem({ id: 'a', text: '無季の句', kigo: '', date: '2026-03-01' }),
+      poem({ id: 'b', text: '春の句', kigo: '', kind: 'tanka', date: '2026-03-02' }),
+    ]);
+    expect(text).toBe('無季の句\n俳句 ・ 2026-03-01\n\n春の句\n短歌 ・ 2026-03-02');
+  });
+});
 
 describe('deserializePoems', () => {
   it('seedPoemsと往復できる', () => {
