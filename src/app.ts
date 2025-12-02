@@ -23,6 +23,7 @@ import {
   KIND_LABELS,
   mergePoems,
   newPoemId,
+  poemsToText,
   sortByDate,
   sortByDateDesc,
   updatePoem,
@@ -556,7 +557,8 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
             <button type="button" class="sort-toggle" data-poem-sort></button>
           </div>
           <div class="eisou-actions">
-            <button type="button" class="link-button" data-export>${icons.download}<span>書き出す</span></button>
+            <button type="button" class="link-button" data-export>${icons.download}<span>JSON</span></button>
+            <button type="button" class="link-button" data-export-text>${icons.download}<span>テキスト</span></button>
             <label class="link-button" for="import-file">${icons.upload}<span>取り込む</span></label>
             <input type="file" id="import-file" accept="application/json,.json" hidden />
           </div>
@@ -633,8 +635,12 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
   }
 
   function bindComposeMeter(scope: HTMLElement): void {
-    scope.querySelector<HTMLInputElement>('#compose-reading')?.addEventListener('input', updateComposeMeter);
-    scope.querySelector<HTMLSelectElement>('#compose-form [name="kind"]')?.addEventListener('change', updateComposeMeter);
+    scope
+      .querySelector<HTMLInputElement>('#compose-reading')
+      ?.addEventListener('input', updateComposeMeter);
+    scope
+      .querySelector<HTMLSelectElement>('#compose-form [name="kind"]')
+      ?.addEventListener('change', updateComposeMeter);
     updateComposeMeter();
   }
 
@@ -660,6 +666,9 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
       updatePoems('swap');
     });
     scope.querySelector<HTMLButtonElement>('[data-export]')?.addEventListener('click', exportPoems);
+    scope
+      .querySelector<HTMLButtonElement>('[data-export-text]')
+      ?.addEventListener('click', exportPoemsText);
     scope.querySelector<HTMLInputElement>('#import-file')?.addEventListener('change', (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) void importPoems(file);
@@ -678,8 +687,10 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
   }
 
   function syncEisouActions(): void {
-    const exportBtn = root.querySelector<HTMLButtonElement>('[data-export]');
-    if (exportBtn) exportBtn.toggleAttribute('disabled', poems.length === 0);
+    const empty = poems.length === 0;
+    for (const sel of ['[data-export]', '[data-export-text]']) {
+      root.querySelector<HTMLButtonElement>(sel)?.toggleAttribute('disabled', empty);
+    }
   }
 
   function syncComposeMode(): void {
@@ -747,16 +758,23 @@ export function createApp({ root, store, initialPoems, today, initialSeason }: A
     }
   }
 
-  function exportPoems(): void {
-    const blob = new Blob([JSON.stringify(poems, null, 2)], {
-      type: 'application/json',
-    });
+  function download(content: string, type: string, ext: string): void {
+    const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `saijiki-eisou-${today}.json`;
+    a.download = `saijiki-eisou-${today}.${ext}`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  function exportPoems(): void {
+    download(JSON.stringify(poems, null, 2), 'application/json', 'json');
+  }
+
+  function exportPoemsText(): void {
+    if (poems.length === 0) return;
+    download(poemsToText(sortByDate(poems, 'asc')), 'text/plain;charset=utf-8', 'txt');
   }
 
   async function importPoems(file: File): Promise<void> {
