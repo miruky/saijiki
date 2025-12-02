@@ -874,6 +874,90 @@ select:focus,
   font-size: 0.84rem;
 }
 
+.compose-reading {
+  display: flex;
+  align-items: center;
+  gap: 10px 20px;
+  flex-wrap: wrap;
+}
+
+.compose-reading input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.92rem;
+  padding: 8px 11px;
+  letter-spacing: 0.04em;
+  transition: border-color 0.2s var(--ease);
+}
+
+.compose-reading input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* ---- 拍(モーラ)メーター ---- */
+
+.meter {
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.compose-reading .meter {
+  margin-left: auto;
+}
+
+.meter-pattern {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.meter-seg {
+  font-family: var(--serif);
+  font-size: 1.04rem;
+  line-height: 1;
+  color: var(--ink-soft);
+}
+
+.meter-sep {
+  color: var(--line);
+}
+
+.meter-total {
+  letter-spacing: 0.04em;
+}
+
+.meter-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.04em;
+}
+
+.meter-status svg {
+  width: 14px;
+  height: 14px;
+}
+
+.meter-status.is-fit {
+  color: var(--accent-ink);
+}
+
+.poem-meter {
+  font-size: 0.8rem;
+}
+
+.poem-meter .meter-seg {
+  font-size: 0.96rem;
+}
+
 .eisou-controls {
   display: flex;
   align-items: center;
@@ -1056,8 +1140,44 @@ select:focus,
     align-items: flex-start;
   }
 
+  /* 入力欄は既定で min-width:auto のため縮まず横にあふれる。狭い画面では
+     縮めて折り返せるようにし、日付・覚え書き・送信ボタンは行いっぱいに置く */
+  .compose-row > select,
+  .compose-row > input {
+    min-width: 0;
+  }
+
+  .compose-row > input[name='kigo'],
+  .compose-row > input[name='date'] {
+    flex: 1 1 42%;
+  }
+
+  .compose-row > input[name='memo'] {
+    flex: 1 1 100%;
+  }
+
   .compose-row .button.primary {
+    flex: 1 1 100%;
     margin-left: 0;
+    justify-content: center;
+  }
+
+  /* 狭い画面では拍メーターを行いっぱいに落とし、日付を左へ寄せて横あふれを防ぐ */
+  .poem-meta {
+    gap: 6px 12px;
+  }
+
+  .poem-meter {
+    flex-basis: 100%;
+  }
+
+  .poem-date {
+    margin-left: 0;
+  }
+
+  .compose-reading .meter {
+    margin-left: 0;
+    flex-basis: 100%;
   }
 }
 

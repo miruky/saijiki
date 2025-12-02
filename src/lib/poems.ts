@@ -67,6 +67,26 @@ export function serializePoems(poems: Poem[]): string {
 }
 
 /**
+ * 詠草を人が読むためのテキストにする。共有・印刷向けの一方向の書き出しで、
+ * これ自体は取り込めない(取り込みはJSON)。本文・よみ・形式・季語・日付・覚え書きを綴る。
+ */
+export function poemsToText(poems: Poem[]): string {
+  return poems
+    .map((p) => {
+      const parts: string[] = [p.text];
+      const reading = (p.reading ?? '').trim();
+      if (reading !== '') parts.push(`（${reading}）`);
+      const meta = [KIND_LABELS[p.kind]];
+      if (p.kigo !== '') meta.push(`季語: ${p.kigo}`);
+      meta.push(p.date);
+      parts.push(meta.join(' ・ '));
+      if (p.memo.trim() !== '') parts.push(`覚え書き: ${p.memo}`);
+      return parts.join('\n');
+    })
+    .join('\n\n');
+}
+
+/**
  * 取り込んだ詠草を既存に統合する。同じidは既存を優先して重複させず、
  * 未知のidだけを足す。戻り値は新しい日付が先頭。
  */
